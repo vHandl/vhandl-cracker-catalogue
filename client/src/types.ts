@@ -10,6 +10,7 @@ export interface Shop {
 export interface Product {
   id: number;
   code: string;
+  brand: string;
   name: string;
   categoryId: number;
   price: number;
@@ -84,4 +85,17 @@ export interface AdminCategory {
   name: string;
   sortOrder: number;
   productCount: number;
+}
+
+export interface VisitPeriodStats {
+  uniqueVisitors: number;
+  opens: number;
+}
+
+/** Catalogue open counts shown on the admin dashboard. */
+export interface VisitStats {
+  uniqueVisitors: number;
+  totalOpens: number;
+  today: VisitPeriodStats;
+  week: VisitPeriodStats;
 }

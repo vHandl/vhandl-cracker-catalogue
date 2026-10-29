@@ -141,13 +141,15 @@ function ItemCell(p: CellProps) {
       <div className="g-item-row">
         <ProductThumb url={product.imageUrl} alt={product.name} />
         <div className="g-item">
-          <span className="card-code">{product.code}</span>
-          <span className="g-name">{product.name}</span>
+          <div className="g-item-title">
+            <span className="card-code">{product.code}</span>
+            <span className="g-name">{product.name}</span>
+          </div>
           <span className="g-price-line">
+            <VideoButton product={product} onOpen={p.context.openVideo} />
             <span className="card-price">
               {rupee(product.price)} <small>/ {product.unit}</small>
             </span>
-            <VideoButton product={product} onOpen={p.context.openVideo} />
           </span>
         </div>
       </div>
@@ -223,9 +225,26 @@ const COMPACT_COLS: ColDef<Row>[] = [
 ];
 
 const WIDE_COLS: ColDef<Row>[] = [
-  { headerName: '', width: 52, cellRenderer: SelectCell, cellClass: 'g-cell-center', headerClass: 'g-head-center' },
-  { headerName: 'Code', width: 96, cellRenderer: CodeCell, autoHeight: true },
-  { headerName: 'Item', flex: 1, minWidth: 160, autoHeight: true, wrapText: true, cellRenderer: NameCell },
+  {
+    headerName: '',
+    width: 44,
+    minWidth: 40,
+    maxWidth: 48,
+    cellRenderer: SelectCell,
+    cellClass: 'g-cell-center',
+    headerClass: 'g-head-center',
+  },
+  {
+    headerName: 'Code',
+    width: 72,
+    minWidth: 64,
+    maxWidth: 72,
+    cellRenderer: CodeCell,
+    autoHeight: true,
+    cellClass: 'g-cell-code',
+    headerClass: 'g-head-code',
+  },
+  { headerName: 'Item', flex: 1, minWidth: 260, autoHeight: true, wrapText: true, cellRenderer: NameCell },
   { headerName: 'Price', width: 120, cellRenderer: PriceCell },
   { headerName: 'Status', width: 116, cellRenderer: StatusCell },
   { headerName: 'Video', width: 116, cellRenderer: VideoCell },

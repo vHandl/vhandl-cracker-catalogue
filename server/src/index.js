@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import db, { uploadsDir } from './db.js';
 import adminRouter from './admin.js';
 import { HttpError, createOrder } from './orders.js';
+import { recordVisit } from './visits.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -25,9 +26,9 @@ app.get('/api/catalogue', (_req, res) => {
   const categories = db.prepare('SELECT id, name FROM categories ORDER BY sort_order, name').all();
   const products = db
     .prepare(
-      `SELECT id, code, name, category_id AS categoryId, price, unit,
+      `SELECT id, code, brand, name, category_id AS categoryId, price, unit,
               video_url AS videoUrl, image_url AS imageUrl, out_of_stock AS outOfStock
-       FROM products WHERE active = 1 ORDER BY sort_order, code`
+       FROM products WHERE active = 1 ORDER BY price ASC, code`
     )
     .all()
     .map((p) => ({ ...p, outOfStock: !!p.outOfStock }));
@@ -50,6 +51,18 @@ const orderLimiter = rateLimit({
 app.post('/api/orders', orderLimiter, (req, res) => {
   const order = createOrder(req.body);
   res.status(201).json({ token: order.token, order });
+});
+
+const visitLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests.' },
+});
+
+app.post('/api/visits', visitLimiter, (req, res) => {
+  res.json(recordVisit(req.body?.visitorId));
 });
 
 // ---------- admin API ----------

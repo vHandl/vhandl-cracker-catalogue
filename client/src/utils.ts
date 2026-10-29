@@ -52,6 +52,26 @@ export function shopChatLink(whatsapp: string, text: string = ORDER_MESSAGE): st
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }
 
+export type BrandFilter = 'all' | 'standard' | 'krishna' | 'others';
+
+export const BRAND_FILTERS: { id: BrandFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'standard', label: 'Standard' },
+  { id: 'krishna', label: 'Krishna' },
+  { id: 'others', label: 'Others' },
+];
+
+/** Groups a product into Standard, Krishna, or Others for the customer brand filter. */
+export function matchesBrand(brand: string | undefined, filter: BrandFilter): boolean {
+  if (filter === 'all') return true;
+  const b = (brand ?? '').trim().toLowerCase();
+  const isStandard = b.includes('standard');
+  const isKrishna = b.includes('krishna');
+  if (filter === 'standard') return isStandard;
+  if (filter === 'krishna') return isKrishna;
+  return !isStandard && !isKrishna;
+}
+
 /** A friendly emoji for a category, picked from its name. */
 export function categoryIcon(name: string): string {
   const n = name.toLowerCase();

@@ -9,9 +9,10 @@ interface Props {
   variant?: 'sheet' | 'dialog';
   footer?: ReactNode;
   hideClose?: boolean;
+  className?: string;
 }
 
-export default function Modal({ title, onClose, children, variant = 'sheet', footer, hideClose }: Props) {
+export default function Modal({ title, onClose, children, variant = 'sheet', footer, hideClose, className }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
@@ -24,7 +25,10 @@ export default function Modal({ title, onClose, children, variant = 'sheet', foo
   }, [onClose]);
 
   return (
-    <div className={`modal-backdrop ${variant}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className={`modal-backdrop ${variant}${className ? ` ${className}` : ''}`}
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         {variant === 'sheet' && <div className="sheet-handle" aria-hidden />}
         <div className="modal-head">

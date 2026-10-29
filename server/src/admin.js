@@ -7,6 +7,7 @@ import db, { uploadsDir } from './db.js';
 import { parseCsv } from './csv.js';
 import { login, requireAdmin } from './auth.js';
 import { HttpError, findOrdersByToken, getOrderById, listOrders } from './orders.js';
+import { getVisitStats } from './visits.js';
 
 const router = express.Router();
 
@@ -466,6 +467,10 @@ router.get('/orders/:id', (req, res) => {
   const order = getOrderById(Number(req.params.id));
   if (!order) throw new HttpError(404, 'Order not found.');
   res.json({ order });
+});
+
+router.get('/stats', (_req, res) => {
+  res.json(getVisitStats());
 });
 
 export default router;

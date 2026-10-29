@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getCatalogue } from '../api';
+import { getCatalogue, pingVisit } from '../api';
 import type { Catalogue, Product } from '../types';
-import { categoryIcon, rupee } from '../utils';
+import { BRAND_FILTERS, categoryIcon, matchesBrand, rupee, type BrandFilter } from '../utils';
 import VideoModal from '../components/VideoModal';
 import { useBackClose } from '../components/useBackClose';
 import { ArrowRightIcon, BagIcon, CloseIcon, SearchIcon } from '../components/Icons';
@@ -15,6 +15,7 @@ export default function CustomerApp() {
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [brandFilter, setBrandFilter] = useState<BrandFilter>('all');
   const [video, setVideo] = useState<Product | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [ordersOpen, setOrdersOpen] = useState(false);
@@ -33,6 +34,7 @@ export default function CustomerApp() {
       .then((c) => {
         setCatalogue(c);
         document.title = `${c.shop.name} – Catalogue`;
+        pingVisit();
       })
       .catch((e: Error) => setError(e.message));
   }
@@ -41,14 +43,24 @@ export default function CustomerApp() {
   const q = query.trim().toLowerCase();
   const visible = useMemo(() => {
     if (!catalogue) return [];
-    if (!q) return catalogue.categories;
     return catalogue.categories
       .map((c) => ({
         ...c,
-        products: c.products.filter((p) => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)),
+        products: c.products.filter((p) => {
+          if (!matchesBrand(p.brand, brandFilter)) return false;
+          if (!q) return true;
+          return p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+        }),
       }))
       .filter((c) => c.products.length > 0);
-  }, [catalogue, q]);
+  }, [catalogue, q, brandFilter]);
+
+  const brandLabel = BRAND_FILTERS.find((b) => b.id === brandFilter)?.label ?? 'All';
+  const hasFilters = Boolean(q) || brandFilter !== 'all';
+  function clearFilters() {
+    setQuery('');
+    setBrandFilter('all');
+  }
 
   // Highlight the category chip for the section currently under the sticky bar.
   useEffect(() => {
@@ -58,7 +70,7 @@ export default function CustomerApp() {
       raf = 0;
       let current: number | null = null;
       for (const row of document.querySelectorAll<HTMLElement>('.ag-row[row-id^="cat-"]')) {
-        if (row.getBoundingClientRect().top <= 200) current = Number(row.getAttribute('row-id')?.slice(4));
+        if (row.getBoundingClientRect().top <= 260) current = Number(row.getAttribute('row-id')?.slice(4));
       }
       setActiveCat((prev) => (prev === current ? prev : current));
     };
@@ -151,6 +163,24 @@ export default function CustomerApp() {
             </button>
           )}
         </div>
+        <div className="brand-filter">
+          <span className="brand-filter-label" id="brand-filter-label">
+            Brand
+          </span>
+          <nav className="chips brand-chips" aria-labelledby="brand-filter-label">
+            {BRAND_FILTERS.filter((b) => b.id !== 'all').map((b) => (
+              <button
+                type="button"
+                key={b.id}
+                className={`chip ${brandFilter === b.id ? 'active' : ''}`}
+                onClick={() => setBrandFilter((prev) => (prev === b.id ? 'all' : b.id))}
+                aria-pressed={brandFilter === b.id}
+              >
+                {b.label}
+              </button>
+            ))}
+          </nav>
+        </div>
         <nav className="chips" aria-label="Categories" ref={chipsRef}>
           {catalogue.categories.map((c) => (
             <button
@@ -171,10 +201,16 @@ export default function CustomerApp() {
       <main className="catalogue">
         {visible.length === 0 && (
           <div className="empty">
-            <p>{q ? `No items match “${query}”.` : 'No items are available right now.'}</p>
-            {q && (
-              <button type="button" className="btn btn-outline" onClick={() => setQuery('')}>
-                Clear search
+            <p>
+              {q
+                ? `No items match “${query}”.`
+                : brandFilter !== 'all'
+                  ? `No ${brandLabel} items are available right now.`
+                  : 'No items are available right now.'}
+            </p>
+            {hasFilters && (
+              <button type="button" className="btn btn-outline" onClick={clearFilters}>
+                {q && brandFilter !== 'all' ? 'Clear filters' : q ? 'Clear search' : 'Show all brands'}
               </button>
             )}
           </div>

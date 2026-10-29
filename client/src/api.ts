@@ -1,4 +1,4 @@
-import type { AdminCategory, AdminProduct, Catalogue, Order, OrderSummary, Shop } from './types';
+import type { AdminCategory, AdminProduct, Catalogue, Order, OrderSummary, Shop, VisitStats } from './types';
 
 const ADMIN_TOKEN_KEY = 'cc_admin_token';
 
@@ -71,6 +71,31 @@ export const submitOrder = (body: {
   items: { productId: number; qty: number }[];
 }) => request<{ token: string; order: Order }>('/api/orders', { method: 'POST', body: json(body) });
 
+const VISITOR_KEY = 'cc_visitor_id';
+const VISIT_SENT_KEY = 'cc_visit_sent';
+
+/** Count this catalogue open once per browser tab. Failures are ignored so the shop still loads. */
+export function pingVisit() {
+  if (adminAuth.get()) return;
+  try {
+    if (sessionStorage.getItem(VISIT_SENT_KEY)) return;
+    sessionStorage.setItem(VISIT_SENT_KEY, '1');
+  } catch {
+    /* private mode can block storage */
+  }
+  let visitorId = '';
+  try {
+    visitorId = localStorage.getItem(VISITOR_KEY) || '';
+    if (!visitorId) {
+      visitorId = crypto.randomUUID();
+      localStorage.setItem(VISITOR_KEY, visitorId);
+    }
+  } catch {
+    visitorId = crypto.randomUUID();
+  }
+  request('/api/visits', { method: 'POST', body: json({ visitorId }) }).catch(() => undefined);
+}
+
 // ---- admin ----
 export const adminLogin = (password: string) =>
   request<{ token: string }>('/api/admin/login', { method: 'POST', body: json({ password }) });
@@ -118,4 +143,6 @@ export const adminApi = {
     request<{ ok: true }>(`/api/admin/categories/${id}`, { method: 'DELETE' }, true),
 
   saveShop: (s: Shop) => request<{ ok: true }>('/api/admin/shop', { method: 'PUT', body: json(s) }, true),
+
+  stats: () => request<VisitStats>('/api/admin/stats', {}, true),
 };

@@ -12,7 +12,7 @@ export default function VideoModal({ title, url, onClose }: Props) {
   const video = parseVideo(url);
 
   return (
-    <Modal title={title} onClose={onClose} variant="dialog">
+    <Modal title={title} onClose={onClose} variant="dialog" className="video-modal">
       {video.kind === 'iframe' && (
         <div className="video-frame">
           <iframe

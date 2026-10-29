@@ -97,7 +97,7 @@ function hydrate(order) {
       `SELECT product_code AS code, product_name AS name, category_name AS category, unit,
               unit_price AS price, qty, line_total AS lineTotal
        FROM order_items WHERE order_id = ?
-       ORDER BY category_order, category_name, product_code`
+       ORDER BY category_order, category_name, unit_price, product_code`
     )
     .all(order.id);
   return {

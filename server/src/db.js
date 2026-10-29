@@ -73,6 +73,16 @@ db.exec(`
     line_total REAL NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+
+  -- One row per catalogue open. visitor_id is a random id stored in the customer's browser,
+  -- so we can count unique phones/browsers without collecting names or IP addresses.
+  CREATE TABLE IF NOT EXISTS catalogue_visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    visitor_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_visits_visitor ON catalogue_visits(visitor_id);
+  CREATE INDEX IF NOT EXISTS idx_visits_created ON catalogue_visits(created_at);
 `);
 
 // ---- lightweight migrations for existing databases ----
