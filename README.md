@@ -2,17 +2,19 @@
 
 A mobile-first digital catalogue for a cracker shop. Customers browse items, pick what they want, set quantities, and see a bill **estimate** grouped by category. There is no payment flow. On submit they give their name and phone number, receive a unique **4-digit token**, and get a **PDF** they can share on WhatsApp. The shop owner looks up any order by that token in the admin portal.
 
+If the shop has two locations, the customer also chooses a **pickup store**. That choice is stored on the order, shown in My orders and admin, and printed on the PDF.
+
 - `client/` — React + Vite + TypeScript. The customer catalogue is at `/` and the admin portal at `/admin`. The item list is an [AG Grid](https://www.ag-grid.com/) (Community edition) table with a heading row per category. Phones get a compact 3-column layout; screens 900px and wider get the full 7-column layout.
 - `server/` — Node.js + Express + SQLite (`better-sqlite3`). In production it also serves the built client.
 
 ## What customers can do
 
-1. Browse the catalogue, search by name or code, and jump to a category from the chip bar.
+1. Browse the catalogue, search by name or code, jump to a category from the chip bar, and filter by brand (**Standard**, **Krishna**, or **Others**).
 2. Tick items, set quantities, and open the order sheet for a total grouped by category.
-3. Submit a name and a 10-digit Indian mobile number. The server assigns a 4-digit token and the customer can download or share a PDF.
-4. Open **My orders** to see orders placed on this device, copy the token, and download the PDF again.
-5. Call the shop, open WhatsApp, or open the address in Google Maps when the shop has filled those in.
-6. Watch a product video, or tap a product photo to see it larger.
+3. Submit a name and a 10-digit Indian mobile number. If the shop has two stores, choose a pickup location. The server assigns a 4-digit token and the customer can download or share a PDF.
+4. Open **My orders** to see orders placed on this device, copy the token, download the PDF again, and open the pickup location in Google Maps.
+5. Call the shop, open WhatsApp, or open a store address in Google Maps when the shop has filled those in.
+6. Watch a product video (from the row or the photo overlay), or tap a product photo to see it larger.
 
 Out-of-stock items stay visible but cannot be selected. Prices are in INR and per unit (box, packet, and so on). Totals are estimates only. No payment data is collected.
 
@@ -22,10 +24,10 @@ Out-of-stock items stay visible but cannot be selected. Prices are in INR and pe
 
 The admin portal at `/admin` is protected by a password. Sessions are signed JWTs.
 
-- **Orders** — look up by 4-digit token, browse and search recent orders, and download or share the PDF again.
+- **Orders** — look up by 4-digit token, browse and search recent orders, filter by store, mark an order as processed, cancelled, or no response, and download or share the PDF again.
 - **Products** — add, edit, and delete products (code, brand, name, category, price, unit, optional video URL and image, show/hide, in stock / out of stock). Select several rows to show, hide, mark in or out of stock, or delete them together.
 - **Categories** — add, rename, reorder, and delete categories.
-- **Shop details** — name, phone, WhatsApp number (with country code, e.g. `919876543210`), address, Google Maps link, and logo. These appear at the top of the catalogue and on every PDF.
+- **Shop details** — name, phone, WhatsApp number (with country code, e.g. `919876543210`), up to two store locations, and logo. Catalogue visit counts are shown at the top of this tab.
 
 ### Bulk upload (CSV)
 
@@ -49,17 +51,31 @@ The shop logo and each product image can be a **web link** or a file **uploaded 
 
 ### Product videos
 
-Paste a YouTube, Vimeo, Google Drive, or direct `.mp4` link in a product's **Video URL**. Items with a video show a **Watch video** button that plays it in a pop-up. Other links open in a new tab.
+Paste a YouTube, Vimeo, Google Drive, or direct `.mp4` link in a product's **Video URL**. Items with a video show a **Watch video** button (and a play overlay on the photo) that plays it in a pop-up. Other links open in a new tab.
+
+### Pickup locations
+
+In **Shop details**, fill in the **first store** (optional location name, address, Google Maps link). It appears at the top of the catalogue. Optionally add a **second store**. Once that second store has an address or Maps link, it appears below the first one and customers must choose a pickup store when they submit an order.
+
+The chosen store's name, address, and Maps link are copied onto the order, so later shop-detail edits do not change old orders. The PDF prints the pickup location.
+
+### Order status
+
+New orders start as **Pending**. In **Orders**, mark them **Processed**, **Cancelled**, or **No response**, or return them to pending. Status appears on the recent-orders list and on the order detail.
+
+### Catalogue visitors
+
+On **Shop details**, unique visitors and opens are shown for today, the last 7 days, and all time. Each phone or browser is counted once as a unique visitor. Refreshing the page is not counted again for 30 minutes. Counts start from when this feature was added.
 
 ### Google Maps
 
-In **Shop details**, paste a share link from `maps.google.com`, `google.com/maps`, `goo.gl/maps`, or `maps.app.goo.gl`. A map button then appears next to the address on the catalogue.
+For each store, paste a share link from `maps.google.com`, `google.com/maps`, `goo.gl/maps`, or `maps.app.goo.gl`. A map button then appears next to that address on the catalogue. If no link is saved, the button searches Google Maps for the address.
 
 ## How tokens work
 
-Every submitted order gets a random 4-digit token (1000–9999) that is unique among orders from the last `TOKEN_REUSE_DAYS` days (default 30). Older tokens can be reused, because there are only 9,000 possible values. In **Admin → Orders**, type the token to see the customer's name, phone, items grouped by category, and total. If an old token matches several orders, they are all listed (newest first) with their name and date.
+Every submitted order gets a random 4-digit token (1000–9999) that is unique among orders from the last `TOKEN_REUSE_DAYS` days (default 30). Older tokens can be reused, because there are only 9,000 possible values. In **Admin → Orders**, type the token to see the customer's name, phone, pickup location, items grouped by category, and total. If an old token matches several orders, they are all listed (newest first) with their name and date.
 
-Order prices are copied into the order when it is submitted, so later price changes never alter old orders. The server recalculates prices and totals itself and does not trust the browser. Hidden and out-of-stock products cannot be ordered. Order submissions are rate-limited (30 per 10 minutes per IP).
+Order prices and the pickup location are copied into the order when it is submitted, so later catalogue or shop-detail changes never alter old orders. The server recalculates prices and totals itself and does not trust the browser. Hidden and out-of-stock products cannot be ordered. Order submissions are rate-limited (30 per 10 minutes per IP).
 
 ## Quick start (development)
 
