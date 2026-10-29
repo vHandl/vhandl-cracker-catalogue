@@ -2,9 +2,15 @@ export interface Shop {
   name: string;
   phone: string;
   whatsapp: string;
+  /** Optional label for the first pickup location (e.g. "Sivakasi"). */
+  locationName: string;
   address: string;
   logoUrl: string;
   mapsUrl: string;
+  /** Optional label for the second pickup location. */
+  locationName2: string;
+  address2: string;
+  mapsUrl2: string;
 }
 
 export interface Product {
@@ -42,6 +48,15 @@ export interface OrderItem {
   lineTotal: number;
 }
 
+export type OrderStatus = 'pending' | 'processed' | 'cancelled' | 'no_response';
+
+export const ORDER_STATUSES: { id: OrderStatus; label: string }[] = [
+  { id: 'pending', label: 'Pending' },
+  { id: 'processed', label: 'Processed' },
+  { id: 'cancelled', label: 'Cancelled' },
+  { id: 'no_response', label: 'No response' },
+];
+
 export interface Order {
   id: number;
   token: string;
@@ -50,6 +65,13 @@ export interface Order {
   total: number;
   createdAt: string;
   items: OrderItem[];
+  /** 1 = first store, 2 = second store. Missing on older device-saved orders. */
+  pickupStore?: 1 | 2;
+  pickupName?: string;
+  pickupAddress?: string;
+  pickupMapsUrl?: string;
+  /** Admin fulfilment status. Missing on older device-saved orders. */
+  status?: OrderStatus;
 }
 
 export interface OrderSummary {
@@ -60,6 +82,9 @@ export interface OrderSummary {
   total: number;
   createdAt: string;
   itemCount: number;
+  pickupStore?: 1 | 2;
+  pickupName?: string;
+  status?: OrderStatus;
 }
 
 /** productId -> quantity */

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Modal from '../components/Modal';
 import { CheckIcon, CopyIcon, ReceiptIcon } from '../components/Icons';
 import type { Order, Shop } from '../types';
-import { formatDateTime, rupee, shopMapsHref } from '../utils';
+import { formatDateTime, pickupLabel, pickupMapsHref, rupee } from '../utils';
 import PdfDownloadButton from './PdfDownloadButton';
 
 interface Props {
@@ -67,6 +67,24 @@ function groupItems(order: Order) {
   return groups;
 }
 
+function PickupLink({ shop, order }: { shop: Shop; order: Order }) {
+  const mapsUrl = pickupMapsHref(order, shop);
+  const label = pickupLabel(order);
+  return (
+    <p className="alert alert-info my-orders-pickup">
+      Pick your order from this{' '}
+      {mapsUrl ? (
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
+          location
+        </a>
+      ) : (
+        'location'
+      )}
+      {label ? ` (${label})` : ''}
+    </p>
+  );
+}
+
 function OrderCard({ shop, order }: { shop: Shop; order: Order }) {
   const [copied, setCopied] = useState(false);
   const count = order.items.reduce((n, i) => n + i.qty, 0);
@@ -100,6 +118,7 @@ function OrderCard({ shop, order }: { shop: Shop; order: Order }) {
         </button>
       </div>
       <p className="my-order-hint">Show this PIN to the shop so they can find your order.</p>
+      <PickupLink shop={shop} order={order} />
 
       <p className="my-order-meta">
         {order.items.length} item{order.items.length === 1 ? '' : 's'} · {count} piece{count === 1 ? '' : 's'} ·{' '}
@@ -135,24 +154,12 @@ function OrderCard({ shop, order }: { shop: Shop; order: Order }) {
 }
 
 export default function MyOrders({ shop, orders, onClose }: Props) {
-  const mapsUrl = shopMapsHref(shop);
-
   return (
     <Modal title="My orders" onClose={onClose}>
       {orders.length === 0 ? (
         <NoOrders onClose={onClose} />
       ) : (
         <div className="my-orders">
-          <p className="alert alert-info my-orders-pickup">
-            Pick your order from this{' '}
-            {mapsUrl ? (
-              <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
-                location
-              </a>
-            ) : (
-              'location'
-            )}
-          </p>
           <p className="muted my-orders-note">
             <ReceiptIcon width={16} height={16} /> Orders placed from this device. Download the PDF or show the PIN to the shop
             so they can find your order.

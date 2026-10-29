@@ -11,6 +11,12 @@ export class HttpError extends Error {
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
+export const ORDER_STATUSES = ['pending', 'processed', 'cancelled', 'no_response'];
+
+function normalizeStatus(value) {
+  return ORDER_STATUSES.includes(value) ? value : 'pending';
+}
+
 /** Keep only digits; accept an optional +91 / 91 / 0 prefix. Returns 10 digits or null. */
 export function normalizePhone(raw) {
   let digits = String(raw ?? '').replace(/\D/g, '');
@@ -41,7 +47,7 @@ function generateToken() {
   return free[Math.floor(Math.random() * free.length)];
 }
 
-const createOrderTx = db.transaction((customerName, customerPhone, items) => {
+const createOrderTx = db.transaction((customerName, customerPhone, items, pickup) => {
   const getProduct = db.prepare(
     `SELECT p.id, p.code, p.name, p.price, p.unit, c.name AS category_name, c.sort_order AS category_order
      FROM products p JOIN categories c ON c.id = p.category_id
@@ -70,8 +76,20 @@ const createOrderTx = db.transaction((customerName, customerPhone, items) => {
   const token = generateToken();
 
   const { lastInsertRowid } = db
-    .prepare('INSERT INTO orders (token, customer_name, customer_phone, total) VALUES (?, ?, ?, ?)')
-    .run(token, customerName, customerPhone, total);
+    .prepare(
+      `INSERT INTO orders (token, customer_name, customer_phone, total, pickup_store, pickup_name, pickup_address, pickup_maps_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      token,
+      customerName,
+      customerPhone,
+      total,
+      pickup.store,
+      pickup.name,
+      pickup.address,
+      pickup.mapsUrl
+    );
   const orderId = Number(lastInsertRowid);
 
   const insertItem = db.prepare(
@@ -107,6 +125,11 @@ function hydrate(order) {
     customerPhone: order.customer_phone,
     total: order.total,
     createdAt: order.created_at,
+    pickupStore: order.pickup_store === 2 ? 2 : 1,
+    pickupName: order.pickup_name || '',
+    pickupAddress: order.pickup_address || '',
+    pickupMapsUrl: order.pickup_maps_url || '',
+    status: normalizeStatus(order.status),
     items,
   };
 }
@@ -122,7 +145,39 @@ export function createOrder(body) {
   if (!Array.isArray(items) || items.length === 0 || items.length > 300) {
     throw new HttpError(400, 'Please select at least one item.');
   }
-  const id = createOrderTx(name, phone, items);
+
+  const shop = db
+    .prepare(
+      `SELECT location_name AS locationName, address, maps_url AS mapsUrl,
+              location_name2 AS locationName2, address2, maps_url2 AS mapsUrl2
+       FROM shop WHERE id = 1`
+    )
+    .get();
+  const hasSecond = Boolean((shop?.address2 ?? '').trim() || (shop?.mapsUrl2 ?? '').trim());
+  let pickupStore = Number(body?.pickupStore);
+  if (pickupStore !== 1 && pickupStore !== 2) {
+    if (hasSecond) throw new HttpError(400, 'Please choose a pickup location.');
+    pickupStore = 1;
+  }
+  if (pickupStore === 2 && !hasSecond) {
+    throw new HttpError(400, 'That pickup location is not available.');
+  }
+  const pickup =
+    pickupStore === 2
+      ? {
+          store: 2,
+          name: String(shop?.locationName2 || '').trim(),
+          address: String(shop?.address2 || '').trim(),
+          mapsUrl: String(shop?.mapsUrl2 || '').trim(),
+        }
+      : {
+          store: 1,
+          name: String(shop?.locationName || '').trim(),
+          address: String(shop?.address || '').trim(),
+          mapsUrl: String(shop?.mapsUrl || '').trim(),
+        };
+
+  const id = createOrderTx(name, phone, items, pickup);
   return getOrderById(id);
 }
 
@@ -134,25 +189,31 @@ export function findOrdersByToken(token) {
     .map(hydrate);
 }
 
-export function listOrders({ q = '', limit = 50 } = {}) {
+export function listOrders({ q = '', store = '', limit = 50 } = {}) {
   const lim = Math.min(Math.max(Number(limit) || 50, 1), 200);
   const term = `%${String(q).trim()}%`;
-  const rows = q
-    ? db
-        .prepare(
-          `SELECT o.*, (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) AS item_count
-           FROM orders o
-           WHERE o.customer_name LIKE ? OR o.customer_phone LIKE ? OR o.token LIKE ?
-           ORDER BY o.created_at DESC, o.id DESC LIMIT ?`
-        )
-        .all(term, term, term, lim)
-    : db
-        .prepare(
-          `SELECT o.*, (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) AS item_count
-           FROM orders o ORDER BY o.created_at DESC, o.id DESC LIMIT ?`
-        )
-        .all(lim);
-  return rows.map((o) => ({
+  const search = Boolean(String(q).trim());
+  const storeId = Number(store);
+  const hasStore = storeId === 1 || storeId === 2;
+
+  const where = [];
+  const params = [];
+  if (search) {
+    where.push('(o.customer_name LIKE ? OR o.customer_phone LIKE ? OR o.token LIKE ?)');
+    params.push(term, term, term);
+  }
+  if (hasStore) {
+    where.push('o.pickup_store = ?');
+    params.push(storeId);
+  }
+
+  let sql = `SELECT o.*, (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) AS item_count
+             FROM orders o`;
+  if (where.length) sql += ` WHERE ${where.join(' AND ')}`;
+  sql += ' ORDER BY o.created_at DESC, o.id DESC LIMIT ?';
+  params.push(lim);
+
+  return db.prepare(sql).all(...params).map((o) => ({
     id: o.id,
     token: o.token,
     customerName: o.customer_name,
@@ -160,5 +221,18 @@ export function listOrders({ q = '', limit = 50 } = {}) {
     total: o.total,
     createdAt: o.created_at,
     itemCount: o.item_count,
+    pickupStore: o.pickup_store === 2 ? 2 : 1,
+    pickupName: o.pickup_name || '',
+    status: normalizeStatus(o.status),
   }));
+}
+
+export function updateOrderStatus(id, status) {
+  const next = String(status ?? '');
+  if (!ORDER_STATUSES.includes(next)) {
+    throw new HttpError(400, 'Choose a valid order status.');
+  }
+  const r = db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(next, Number(id));
+  if (!r.changes) throw new HttpError(404, 'Order not found.');
+  return getOrderById(id);
 }

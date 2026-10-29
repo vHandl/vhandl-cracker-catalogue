@@ -1,4 +1,4 @@
-import type { AdminCategory, AdminProduct, Catalogue, Order, OrderSummary, Shop, VisitStats } from './types';
+import type { AdminCategory, AdminProduct, Catalogue, Order, OrderStatus, OrderSummary, Shop, VisitStats } from './types';
 
 const ADMIN_TOKEN_KEY = 'cc_admin_token';
 
@@ -69,6 +69,7 @@ export const submitOrder = (body: {
   customerName: string;
   customerPhone: string;
   items: { productId: number; qty: number }[];
+  pickupStore?: 1 | 2;
 }) => request<{ token: string; order: Order }>('/api/orders', { method: 'POST', body: json(body) });
 
 const VISITOR_KEY = 'cc_visitor_id';
@@ -101,11 +102,18 @@ export const adminLogin = (password: string) =>
   request<{ token: string }>('/api/admin/login', { method: 'POST', body: json({ password }) });
 
 export const adminApi = {
-  orders: (q = '') =>
-    request<{ orders: OrderSummary[] }>(`/api/admin/orders?q=${encodeURIComponent(q)}`, {}, true),
+  orders: (q = '', store?: 1 | 2) => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (store === 1 || store === 2) params.set('store', String(store));
+    const qs = params.toString();
+    return request<{ orders: OrderSummary[] }>(`/api/admin/orders${qs ? `?${qs}` : ''}`, {}, true);
+  },
   ordersByToken: (token: string) =>
     request<{ orders: Order[] }>(`/api/admin/orders?token=${encodeURIComponent(token)}`, {}, true),
   order: (id: number) => request<{ order: Order }>(`/api/admin/orders/${id}`, {}, true),
+  updateOrderStatus: (id: number, status: OrderStatus) =>
+    request<{ order: Order }>(`/api/admin/orders/${id}/status`, { method: 'PATCH', body: json({ status }) }, true),
 
   products: () => request<AdminProduct[]>('/api/admin/products', {}, true),
   saveProduct: (p: Partial<AdminProduct> & { id?: number }) =>

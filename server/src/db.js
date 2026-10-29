@@ -23,9 +23,13 @@ db.exec(`
     name TEXT NOT NULL,
     phone TEXT NOT NULL DEFAULT '',
     whatsapp TEXT NOT NULL DEFAULT '',
+    location_name TEXT NOT NULL DEFAULT '',
     address TEXT NOT NULL DEFAULT '',
     logo_url TEXT NOT NULL DEFAULT '',
-    maps_url TEXT NOT NULL DEFAULT ''
+    maps_url TEXT NOT NULL DEFAULT '',
+    location_name2 TEXT NOT NULL DEFAULT '',
+    address2 TEXT NOT NULL DEFAULT '',
+    maps_url2 TEXT NOT NULL DEFAULT ''
   );
 
   CREATE TABLE IF NOT EXISTS categories (
@@ -55,6 +59,11 @@ db.exec(`
     customer_name TEXT NOT NULL,
     customer_phone TEXT NOT NULL,
     total REAL NOT NULL,
+    pickup_store INTEGER NOT NULL DEFAULT 1,
+    pickup_name TEXT NOT NULL DEFAULT '',
+    pickup_address TEXT NOT NULL DEFAULT '',
+    pickup_maps_url TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending',
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
   CREATE INDEX IF NOT EXISTS idx_orders_token ON orders(token);
@@ -104,6 +113,35 @@ if (productCols.includes('box_code')) {
 const shopCols = db.prepare('PRAGMA table_info(shop)').all().map((c) => c.name);
 if (!shopCols.includes('maps_url')) {
   db.exec("ALTER TABLE shop ADD COLUMN maps_url TEXT NOT NULL DEFAULT ''");
+}
+if (!shopCols.includes('location_name')) {
+  db.exec("ALTER TABLE shop ADD COLUMN location_name TEXT NOT NULL DEFAULT ''");
+}
+if (!shopCols.includes('location_name2')) {
+  db.exec("ALTER TABLE shop ADD COLUMN location_name2 TEXT NOT NULL DEFAULT ''");
+}
+if (!shopCols.includes('address2')) {
+  db.exec("ALTER TABLE shop ADD COLUMN address2 TEXT NOT NULL DEFAULT ''");
+}
+if (!shopCols.includes('maps_url2')) {
+  db.exec("ALTER TABLE shop ADD COLUMN maps_url2 TEXT NOT NULL DEFAULT ''");
+}
+
+const orderCols = db.prepare('PRAGMA table_info(orders)').all().map((c) => c.name);
+if (!orderCols.includes('pickup_store')) {
+  db.exec('ALTER TABLE orders ADD COLUMN pickup_store INTEGER NOT NULL DEFAULT 1');
+}
+if (!orderCols.includes('pickup_name')) {
+  db.exec("ALTER TABLE orders ADD COLUMN pickup_name TEXT NOT NULL DEFAULT ''");
+}
+if (!orderCols.includes('pickup_address')) {
+  db.exec("ALTER TABLE orders ADD COLUMN pickup_address TEXT NOT NULL DEFAULT ''");
+}
+if (!orderCols.includes('pickup_maps_url')) {
+  db.exec("ALTER TABLE orders ADD COLUMN pickup_maps_url TEXT NOT NULL DEFAULT ''");
+}
+if (!orderCols.includes('status')) {
+  db.exec("ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'");
 }
 
 function seed() {

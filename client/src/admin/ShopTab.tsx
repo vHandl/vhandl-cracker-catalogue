@@ -11,7 +11,13 @@ interface Props {
 }
 
 export default function ShopTab({ shop, onSaved, onError }: Props) {
-  const [f, setF] = useState<Shop>(shop);
+  const [f, setF] = useState<Shop>({
+    ...shop,
+    locationName: shop.locationName ?? '',
+    address2: shop.address2 ?? '',
+    mapsUrl2: shop.mapsUrl2 ?? '',
+    locationName2: shop.locationName2 ?? '',
+  });
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -62,21 +68,71 @@ export default function ShopTab({ shop, onSaved, onError }: Props) {
               />
             </label>
           </div>
-          <label className="field">
-            <span>Address</span>
-            <textarea value={f.address} onChange={(e) => set('address', e.target.value)} rows={2} maxLength={300} />
-          </label>
-          <label className="field">
-            <span>Google Maps link</span>
-            <input
-              value={f.mapsUrl ?? ''}
-              onChange={(e) => set('mapsUrl', e.target.value)}
-              maxLength={1000}
-              inputMode="url"
-              placeholder="https://maps.app.goo.gl/..."
-            />
-          </label>
-          <p className="muted">Paste a Google Maps share link. A map button appears in front of the address in the catalogue.</p>
+          <div className="store-block">
+            <h3>First store</h3>
+            <p className="muted">Shown at the top of the catalogue. Customers can pick this as a pickup location.</p>
+            <label className="field">
+              <span>Location name (optional)</span>
+              <input
+                value={f.locationName ?? ''}
+                onChange={(e) => set('locationName', e.target.value)}
+                maxLength={80}
+                placeholder="e.g. Sivakasi"
+              />
+            </label>
+            <label className="field">
+              <span>Address</span>
+              <textarea value={f.address} onChange={(e) => set('address', e.target.value)} rows={2} maxLength={300} />
+            </label>
+            <label className="field">
+              <span>Google Maps link</span>
+              <input
+                value={f.mapsUrl ?? ''}
+                onChange={(e) => set('mapsUrl', e.target.value)}
+                maxLength={1000}
+                inputMode="url"
+                placeholder="https://maps.app.goo.gl/..."
+              />
+            </label>
+            <p className="muted">Paste a Google Maps share link. A map button appears in front of the address in the catalogue.</p>
+          </div>
+
+          <div className="store-block">
+            <h3>Second store (optional)</h3>
+            <p className="muted">
+              Once an address or Maps link is saved, this location appears below the first one and customers choose a
+              pickup store when they submit an order.
+            </p>
+            <label className="field">
+              <span>Location name (optional)</span>
+              <input
+                value={f.locationName2 ?? ''}
+                onChange={(e) => set('locationName2', e.target.value)}
+                maxLength={80}
+                placeholder="e.g. Chennai"
+              />
+            </label>
+            <label className="field">
+              <span>Address</span>
+              <textarea
+                value={f.address2 ?? ''}
+                onChange={(e) => set('address2', e.target.value)}
+                rows={2}
+                maxLength={300}
+              />
+            </label>
+            <label className="field">
+              <span>Google Maps link</span>
+              <input
+                value={f.mapsUrl2 ?? ''}
+                onChange={(e) => set('mapsUrl2', e.target.value)}
+                maxLength={1000}
+                inputMode="url"
+                placeholder="https://maps.app.goo.gl/..."
+              />
+            </label>
+          </div>
+
           <ImageField label="Logo (optional)" value={f.logoUrl} onChange={(url) => set('logoUrl', url)} onError={onError} />
           {error && <div className="alert alert-error">{error}</div>}
           {saved && <div className="alert alert-success">Saved.</div>}

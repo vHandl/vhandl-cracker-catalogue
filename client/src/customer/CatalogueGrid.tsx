@@ -73,19 +73,22 @@ function SelectCell(p: CellProps) {
   );
 }
 
-function CodeCell(p: CellProps) {
-  const row = itemOf(p);
-  return row ? <span className="card-code">{row.product.code}</span> : null;
+function productBrand(product: Product): string {
+  return (product.brand ?? '').trim();
 }
 
-/** Wide layout: picture (or placeholder) before the item name. */
+/** Wide layout: picture (or placeholder) before the item name, with brand beside it when set. */
 function NameCell(p: CellProps) {
   const row = itemOf(p);
   if (!row) return null;
+  const brand = productBrand(row.product);
   return (
     <div className="g-named">
       <ProductThumb url={row.product.imageUrl} alt={row.product.name} />
-      <span className="g-name">{row.product.name}</span>
+      <div className="g-named-text">
+        <span className="g-name">{row.product.name}</span>
+        {brand ? <span className="g-item-meta">{brand}</span> : null}
+      </div>
     </div>
   );
 }
@@ -131,36 +134,39 @@ function VideoCell(p: CellProps) {
   return row ? <VideoButton product={row.product} onOpen={p.context.openVideo} /> : null;
 }
 
-/** Phone layout: picture, details, video button and quantity all in one cell, so the text gets the full width. */
+/** Phone layout: name, optional brand, then price and quantity on one row. */
 function ItemCell(p: CellProps) {
   const row = itemOf(p);
   if (!row) return null;
   const { product } = row;
+  const brand = productBrand(product);
   return (
     <div className="g-item-block">
       <div className="g-item-row">
-        <ProductThumb url={product.imageUrl} alt={product.name} />
+        <ProductThumb
+          url={product.imageUrl}
+          alt={product.name}
+          onPlay={product.videoUrl ? () => p.context.openVideo(product) : undefined}
+        />
         <div className="g-item">
-          <div className="g-item-title">
-            <span className="card-code">{product.code}</span>
-            <span className="g-name">{product.name}</span>
-          </div>
-          <span className="g-price-line">
-            <VideoButton product={product} onOpen={p.context.openVideo} />
-            <span className="card-price">
-              {rupee(product.price)} <small>/ {product.unit}</small>
-            </span>
+          <span className="g-name">{product.name}</span>
+          <span className="g-item-meta" aria-hidden={!brand}>
+            {brand || '\u00a0'}
           </span>
+          {row.qty > 0 ? (
+            <strong className="g-amount g-amount-inline">{rupee(product.price * row.qty)}</strong>
+          ) : null}
+          <span className="card-price">
+            {rupee(product.price)} <small>/ {product.unit}</small>
+          </span>
+          <div className="g-item-actions">
+            {product.outOfStock ? (
+              <span className="badge badge-out">Out of Stock</span>
+            ) : (
+              <QtyControl row={row} p={p} />
+            )}
+          </div>
         </div>
-      </div>
-      {/* Next line: quantity and (once selected) the cost */}
-      <div className="g-item-actions">
-        {product.outOfStock ? (
-          <span className="badge badge-out">Out of Stock</span>
-        ) : (
-          <QtyControl row={row} p={p} />
-        )}
-        {row.qty > 0 && <strong className="g-amount g-amount-inline">{rupee(product.price * row.qty)}</strong>}
       </div>
     </div>
   );
@@ -214,9 +220,9 @@ const COMMON: ColDef<Row> = {
 };
 
 const COMPACT_COLS: ColDef<Row>[] = [
-  { headerName: '', width: 52, cellRenderer: SelectCell, cellClass: 'g-cell-center', headerClass: 'g-head-center' },
+  { headerName: '', width: 36, cellRenderer: SelectCell, cellClass: 'g-cell-center', headerClass: 'g-head-center' },
   {
-    headerName: 'Item',
+    headerName: '',
     flex: 1,
     minWidth: 120,
     autoHeight: true,
@@ -233,16 +239,6 @@ const WIDE_COLS: ColDef<Row>[] = [
     cellRenderer: SelectCell,
     cellClass: 'g-cell-center',
     headerClass: 'g-head-center',
-  },
-  {
-    headerName: 'Code',
-    width: 72,
-    minWidth: 64,
-    maxWidth: 72,
-    cellRenderer: CodeCell,
-    autoHeight: true,
-    cellClass: 'g-cell-code',
-    headerClass: 'g-head-code',
   },
   { headerName: 'Item', flex: 1, minWidth: 260, autoHeight: true, wrapText: true, cellRenderer: NameCell },
   { headerName: 'Price', width: 120, cellRenderer: PriceCell },
@@ -296,7 +292,7 @@ function CatalogueGrid({ categories, selection, onToggle, onQty, onVideo }: Prop
   );
 
   return (
-    <div className="grid-wrap">
+    <div className={`grid-wrap${wide ? '' : ' grid-compact'}`}>
       <AgGridReact<Row>
         theme={gridTheme}
         rowData={rows}
@@ -313,7 +309,7 @@ function CatalogueGrid({ categories, selection, onToggle, onQty, onVideo }: Prop
           'row-group': (p) => p.data?.kind === 'group',
         }}
         domLayout="autoHeight" // the page scrolls, not the grid (best on phones)
-        headerHeight={38}
+        headerHeight={wide ? 38 : 0}
         rowHeight={60}
         suppressCellFocus
         suppressRowHoverHighlight={false}

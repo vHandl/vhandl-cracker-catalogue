@@ -20,6 +20,81 @@ export function shopMapsHref(shop: { mapsUrl?: string; address?: string } | null
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
+export type StoreId = 1 | 2;
+
+export interface StoreLocation {
+  id: StoreId;
+  name: string;
+  address: string;
+  mapsUrl: string;
+}
+
+export function shopHasSecondStore(shop: { address2?: string; mapsUrl2?: string } | null | undefined): boolean {
+  return Boolean((shop?.address2 ?? '').trim() || (shop?.mapsUrl2 ?? '').trim());
+}
+
+/** Pickup locations the customer can choose from. Store 1 is always included; store 2 only if configured. */
+export function shopLocations(
+  shop: {
+    locationName?: string;
+    address?: string;
+    mapsUrl?: string;
+    locationName2?: string;
+    address2?: string;
+    mapsUrl2?: string;
+  } | null | undefined
+): StoreLocation[] {
+  if (!shop) return [];
+  const locs: StoreLocation[] = [
+    {
+      id: 1,
+      name: (shop.locationName ?? '').trim() || 'Main store',
+      address: shop.address ?? '',
+      mapsUrl: shop.mapsUrl ?? '',
+    },
+  ];
+  if (shopHasSecondStore(shop)) {
+    locs.push({
+      id: 2,
+      name: (shop.locationName2 ?? '').trim() || 'Second store',
+      address: shop.address2 ?? '',
+      mapsUrl: shop.mapsUrl2 ?? '',
+    });
+  }
+  return locs;
+}
+
+/** Maps link for the pickup store saved on an order, falling back to the shop's first location. */
+export function pickupMapsHref(
+  order: { pickupMapsUrl?: string; pickupAddress?: string; pickupStore?: number } | null | undefined,
+  shop?: { mapsUrl?: string; address?: string; mapsUrl2?: string; address2?: string } | null
+): string | null {
+  const fromOrder = shopMapsHref({ mapsUrl: order?.pickupMapsUrl, address: order?.pickupAddress });
+  if (fromOrder) return fromOrder;
+  if (order?.pickupStore === 2) {
+    return shopMapsHref({ mapsUrl: shop?.mapsUrl2, address: shop?.address2 }) ?? shopMapsHref(shop);
+  }
+  return shopMapsHref(shop);
+}
+
+export function pickupLabel(order: { pickupName?: string; pickupAddress?: string } | null | undefined): string {
+  const name = (order?.pickupName ?? '').trim();
+  const address = (order?.pickupAddress ?? '').trim();
+  if (name && address) return `${name} — ${address}`;
+  return name || address;
+}
+
+/** Short pickup-store name for admin lists and filters. */
+export function orderStoreLabel(
+  order: { pickupStore?: number; pickupName?: string } | null | undefined,
+  shop?: { locationName?: string; locationName2?: string } | null
+): string {
+  const saved = (order?.pickupName ?? '').trim();
+  if (saved) return saved;
+  if (order?.pickupStore === 2) return (shop?.locationName2 ?? '').trim() || 'Second store';
+  return (shop?.locationName ?? '').trim() || 'First store';
+}
+
 const inr = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 /** "Rs. 1,250" (plain text; safe for PDF fonts too) */

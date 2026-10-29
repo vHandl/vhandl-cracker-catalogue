@@ -47,7 +47,9 @@ export function buildOrderPdf(shop: Shop, order: Order): PdfResult {
     .filter(Boolean)
     .join('   |   ');
   if (contact) doc.text(contact, margin, 60);
-  if (shop.address) doc.text(shop.address, margin, 76, { maxWidth: pageW - margin * 2 });
+  const pickupLine = [order.pickupName, order.pickupAddress].filter((s) => (s ?? '').trim()).join(' — ');
+  const headerAddress = pickupLine || shop.address;
+  if (headerAddress) doc.text(headerAddress, margin, 76, { maxWidth: pageW - margin * 2 });
 
   // ---- token + customer box ----
   let y = 112;
@@ -80,6 +82,13 @@ export function buildOrderPdf(shop: Shop, order: Order): PdfResult {
   doc.text(formatDateTime(order.createdAt), rightX + 60, y + 58);
 
   y += 74 + 18;
+  if (pickupLine) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...DARK);
+    doc.text(`Pickup: ${pickupLine}`, margin, y, { maxWidth: pageW - margin * 2 });
+    y += 16;
+  }
 
   // ---- one table per category ----
   const groups = groupByCategory(order);

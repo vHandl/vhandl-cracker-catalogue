@@ -6,7 +6,7 @@ import path from 'node:path';
 import db, { uploadsDir } from './db.js';
 import { parseCsv } from './csv.js';
 import { login, requireAdmin } from './auth.js';
-import { HttpError, findOrdersByToken, getOrderById, listOrders } from './orders.js';
+import { HttpError, findOrdersByToken, getOrderById, listOrders, updateOrderStatus } from './orders.js';
 import { getVisitStats } from './visits.js';
 
 const router = express.Router();
@@ -177,21 +177,27 @@ router.put('/shop', (req, res) => {
     throw new HttpError(400, 'Logo must be an uploaded file or a link starting with http:// or https://');
   }
   const mapsUrl = str(req.body.mapsUrl, 1000);
-  if (!validMapsUrl(mapsUrl)) {
+  const mapsUrl2 = str(req.body.mapsUrl2, 1000);
+  if (!validMapsUrl(mapsUrl) || !validMapsUrl(mapsUrl2)) {
     throw new HttpError(
       400,
       'Google Maps link must be an http(s) maps URL (maps.google.com, google.com/maps, goo.gl/maps, or maps.app.goo.gl).'
     );
   }
   db.prepare(
-    'UPDATE shop SET name = ?, phone = ?, whatsapp = ?, address = ?, logo_url = ?, maps_url = ? WHERE id = 1'
+    `UPDATE shop SET name = ?, phone = ?, whatsapp = ?, location_name = ?, address = ?, logo_url = ?, maps_url = ?,
+     location_name2 = ?, address2 = ?, maps_url2 = ? WHERE id = 1`
   ).run(
     name,
     str(req.body.phone, 30),
     str(req.body.whatsapp, 30).replace(/\D/g, ''),
+    str(req.body.locationName, 80),
     str(req.body.address, 300),
     logoUrl,
-    mapsUrl
+    mapsUrl,
+    str(req.body.locationName2, 80),
+    str(req.body.address2, 300),
+    mapsUrl2
   );
   res.json({ ok: true });
 });
@@ -460,12 +466,17 @@ router.get('/orders', (req, res) => {
     if (!/^\d{4}$/.test(token)) throw new HttpError(400, 'Token must be 4 digits.');
     return res.json({ orders: findOrdersByToken(token) });
   }
-  res.json({ orders: listOrders({ q: req.query.q, limit: req.query.limit }) });
+  res.json({ orders: listOrders({ q: req.query.q, store: req.query.store, limit: req.query.limit }) });
 });
 
 router.get('/orders/:id', (req, res) => {
   const order = getOrderById(Number(req.params.id));
   if (!order) throw new HttpError(404, 'Order not found.');
+  res.json({ order });
+});
+
+router.patch('/orders/:id/status', (req, res) => {
+  const order = updateOrderStatus(Number(req.params.id), req.body?.status);
   res.json({ order });
 });
 

@@ -3,7 +3,7 @@ import Modal from '../components/Modal';
 import QtyStepper from '../components/QtyStepper';
 import { ApiError, submitOrder } from '../api';
 import type { Order, Shop } from '../types';
-import { categoryIcon, cleanPhone, rupee, shopMapsHref } from '../utils';
+import { categoryIcon, cleanPhone, pickupLabel, pickupMapsHref, rupee, shopLocations, type StoreId } from '../utils';
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, SendIcon, WhatsAppIcon } from '../components/Icons';
 import PdfDownloadButton from './PdfDownloadButton';
 import type { SelectedGroup } from './useSelection';
@@ -58,6 +58,7 @@ export default function OrderSheet({
   if (step === 'details') {
     return (
       <DetailsStep
+        shop={shop}
         total={total}
         itemCount={itemCount}
         groups={groups}
@@ -158,6 +159,7 @@ function GroupedList({
 }
 
 function DetailsStep({
+  shop,
   groups,
   total,
   itemCount,
@@ -165,6 +167,7 @@ function DetailsStep({
   onClose,
   onSubmitted,
 }: {
+  shop: Shop;
   groups: SelectedGroup[];
   total: number;
   itemCount: number;
@@ -173,25 +176,31 @@ function DetailsStep({
   onSubmitted: (o: Order) => void;
 }) {
   const initial = useMemo(loadProfile, []);
+  const locations = shopLocations(shop);
+  const needPickup = locations.length > 1;
   const [name, setName] = useState(initial.name);
   const [phone, setPhone] = useState(initial.phone);
+  const [pickupStore, setPickupStore] = useState<StoreId | 0>(needPickup ? 0 : 1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [touched, setTouched] = useState(false);
 
   const nameOk = name.trim().length >= 2;
   const phoneOk = cleanPhone(phone).length === 10;
+  const pickupOk = pickupStore === 1 || pickupStore === 2;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTouched(true);
     setError('');
     if (!nameOk || !phoneOk || busy) return;
+    if (pickupStore !== 1 && pickupStore !== 2) return;
     setBusy(true);
     try {
       const { order } = await submitOrder({
         customerName: name.trim(),
         customerPhone: cleanPhone(phone),
+        pickupStore,
         items: groups.flatMap((g) => g.lines.map((l) => ({ productId: l.product.id, qty: l.qty }))),
       });
       try {
@@ -241,6 +250,28 @@ function DetailsStep({
           share on WhatsApp.
         </p>
 
+        {needPickup && (
+          <fieldset className="pickup-choices">
+            <legend>Pickup location</legend>
+            {locations.map((loc) => (
+              <label key={loc.id} className={`pickup-choice ${pickupStore === loc.id ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="pickup-store"
+                  value={loc.id}
+                  checked={pickupStore === loc.id}
+                  onChange={() => setPickupStore(loc.id)}
+                />
+                <span>
+                  <strong>{loc.name}</strong>
+                  {loc.address ? <em>{loc.address}</em> : null}
+                </span>
+              </label>
+            ))}
+            {touched && !pickupOk && <em className="field-error">Please choose a pickup location.</em>}
+          </fieldset>
+        )}
+
         <label className="field">
           <span>Your name</span>
           <input
@@ -277,7 +308,8 @@ function DetailsStep({
 }
 
 function DoneStep({ shop, order, onClose }: { shop: Shop; order: Order; onClose: () => void }) {
-  const mapsUrl = shopMapsHref(shop);
+  const mapsUrl = pickupMapsHref(order, shop);
+  const pickup = pickupLabel(order);
 
   return (
     <Modal
@@ -323,6 +355,18 @@ function DoneStep({ shop, order, onClose }: { shop: Shop; order: Order; onClose:
           <strong>{rupee(order.total)}</strong>
         </div>
       </div>
+      {pickup && (
+        <p className="pickup-summary">
+          Pickup:{' '}
+          {mapsUrl ? (
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
+              {pickup}
+            </a>
+          ) : (
+            pickup
+          )}
+        </p>
+      )}
 
       <div className="stack">
         <PdfDownloadButton shop={shop} order={order} className="btn-block" />

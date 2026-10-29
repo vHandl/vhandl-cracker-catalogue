@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, adminApi } from '../api';
-import type { Order, OrderSummary, Shop } from '../types';
-import { categoryIcon, formatDateTime, rupee } from '../utils';
+import { ORDER_STATUSES, type Order, type OrderStatus, type OrderSummary, type Shop } from '../types';
+import { categoryIcon, formatDateTime, orderStoreLabel, pickupLabel, rupee } from '../utils';
 import { DownloadIcon, HashIcon, WhatsAppIcon } from '../components/Icons';
+
+type StoreFilter = '' | '1' | '2';
 
 interface Props {
   shop: Shop | null;
@@ -16,13 +18,15 @@ export default function OrdersTab({ shop, onError }: Props) {
   const [busy, setBusy] = useState(false);
 
   const [q, setQ] = useState('');
+  const [store, setStore] = useState<StoreFilter>('');
   const [recent, setRecent] = useState<OrderSummary[]>([]);
   const [listError, setListError] = useState('');
 
   const loadRecent = useCallback(
-    (query: string) => {
+    (query: string, storeFilter: StoreFilter) => {
+      const storeId = storeFilter === '1' ? 1 : storeFilter === '2' ? 2 : undefined;
       adminApi
-        .orders(query)
+        .orders(query, storeId)
         .then((r) => {
           setRecent(r.orders);
           setListError('');
@@ -36,9 +40,14 @@ export default function OrdersTab({ shop, onError }: Props) {
 
   // debounce search
   useEffect(() => {
-    const t = setTimeout(() => loadRecent(q), 250);
+    const t = setTimeout(() => loadRecent(q, store), 250);
     return () => clearTimeout(t);
-  }, [q, loadRecent]);
+  }, [q, store, loadRecent]);
+
+  function applyOrderUpdate(updated: Order) {
+    setFound((prev) => (prev ? prev.map((o) => (o.id === updated.id ? updated : o)) : [updated]));
+    loadRecent(q, store);
+  }
 
   async function lookup(e: React.FormEvent) {
     e.preventDefault();
@@ -71,6 +80,9 @@ export default function OrdersTab({ shop, onError }: Props) {
       if (!onError(err)) setListError(err instanceof Error ? err.message : 'Could not open order.');
     }
   }
+
+  const store1 = (shop?.locationName ?? '').trim() || 'First store';
+  const store2 = (shop?.locationName2 ?? '').trim() || 'Second store';
 
   return (
     <div>
@@ -106,21 +118,35 @@ export default function OrdersTab({ shop, onError }: Props) {
           </div>
         )}
         {found?.map((o) => (
-          <OrderDetail key={o.id} order={o} shop={shop} />
+          <OrderDetail key={o.id} order={o} shop={shop} onError={onError} onUpdated={applyOrderUpdate} />
         ))}
       </section>
 
       <section className="panel">
         <h2>Recent orders</h2>
-        <input
-          className="admin-search"
-          type="search"
-          placeholder="Search name, phone or token"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+        <div className="admin-filters">
+          <input
+            className="admin-search"
+            type="search"
+            placeholder="Search name, phone or token"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <select
+            className="admin-search admin-filter-select"
+            aria-label="Filter by store"
+            value={store}
+            onChange={(e) => setStore(e.target.value as StoreFilter)}
+          >
+            <option value="">All stores</option>
+            <option value="1">{store1}</option>
+            <option value="2">{store2}</option>
+          </select>
+        </div>
         {listError && <div className="alert alert-error">{listError}</div>}
-        {recent.length === 0 && !listError && <p className="muted">No orders yet.</p>}
+        {recent.length === 0 && !listError && (
+          <p className="muted">{q || store ? 'No matching orders.' : 'No orders yet.'}</p>
+        )}
         <ul className="order-list">
           {recent.map((o) => (
             <li key={o.id}>
@@ -130,11 +156,14 @@ export default function OrdersTab({ shop, onError }: Props) {
                   <strong>{o.customerName}</strong>
                   <small>
                     {o.customerPhone} · {formatDateTime(o.createdAt)}
+                    {' · '}
+                    {orderStoreLabel(o, shop)}
                   </small>
                 </span>
                 <span className="order-amt">
                   {rupee(o.total)}
                   <small>{o.itemCount} items</small>
+                  <StatusBadge status={o.status} />
                 </span>
               </button>
             </li>
@@ -145,9 +174,36 @@ export default function OrdersTab({ shop, onError }: Props) {
   );
 }
 
-function OrderDetail({ order, shop }: { order: Order; shop: Shop | null }) {
+function statusMeta(status?: OrderStatus | string) {
+  const id = ORDER_STATUSES.some((s) => s.id === status) ? (status as OrderStatus) : 'pending';
+  const label = ORDER_STATUSES.find((s) => s.id === id)?.label ?? 'Pending';
+  return { id, label, className: `badge badge-status-${id}` };
+}
+
+function StatusBadge({ status }: { status?: OrderStatus | string }) {
+  const { label, className } = statusMeta(status);
+  return <span className={className}>{label}</span>;
+}
+
+function OrderDetail({
+  order,
+  shop,
+  onError,
+  onUpdated,
+}: {
+  order: Order;
+  shop: Shop | null;
+  onError: (e: unknown) => boolean;
+  onUpdated: (order: Order) => void;
+}) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const currentStatus = statusMeta(order.status).id;
+
+  useEffect(() => {
+    setNote('');
+  }, [order.id]);
 
   const groups: { category: string; items: Order['items'] }[] = [];
   for (const it of order.items) {
@@ -179,6 +235,22 @@ function OrderDetail({ order, shop }: { order: Order; shop: Shop | null }) {
     }
   }
 
+  async function markStatus(status: OrderStatus) {
+    if (statusBusy || status === currentStatus) return;
+    setStatusBusy(true);
+    setNote('');
+    try {
+      const { order: updated } = await adminApi.updateOrderStatus(order.id, status);
+      onUpdated(updated);
+      const label = ORDER_STATUSES.find((s) => s.id === status)?.label ?? status;
+      setNote(`Marked as ${label.toLowerCase()}.`);
+    } catch (err) {
+      if (!onError(err)) setNote(err instanceof ApiError ? err.message : 'Could not update order status.');
+    } finally {
+      setStatusBusy(false);
+    }
+  }
+
   return (
     <article className="order-detail">
       <div className="order-detail-head">
@@ -187,6 +259,15 @@ function OrderDetail({ order, shop }: { order: Order; shop: Shop | null }) {
           <strong>{order.customerName}</strong>
           <div className="muted">
             <a href={`tel:${order.customerPhone}`}>{order.customerPhone}</a> · {formatDateTime(order.createdAt)}
+            {pickupLabel(order) ? (
+              <>
+                <br />
+                Pickup: {pickupLabel(order)}
+              </>
+            ) : null}
+          </div>
+          <div className="order-detail-status">
+            <StatusBadge status={order.status} />
           </div>
         </div>
       </div>
@@ -230,6 +311,34 @@ function OrderDetail({ order, shop }: { order: Order; shop: Shop | null }) {
       <div className="total-row">
         <span>Estimated total</span>
         <strong>{rupee(order.total)}</strong>
+      </div>
+
+      <div className="order-status">
+        <p className="order-status-label">Mark order</p>
+        <div className="order-status-actions" role="group" aria-label="Order status">
+          {ORDER_STATUSES.filter((s) => s.id !== 'pending').map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`btn btn-sm btn-outline order-status-btn status-${s.id} ${currentStatus === s.id ? 'active' : ''}`}
+              disabled={statusBusy}
+              aria-pressed={currentStatus === s.id}
+              onClick={() => markStatus(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        {currentStatus !== 'pending' && (
+          <button
+            type="button"
+            className="link-btn order-status-clear"
+            disabled={statusBusy}
+            onClick={() => markStatus('pending')}
+          >
+            Back to pending
+          </button>
+        )}
       </div>
 
       <div className="btn-row">

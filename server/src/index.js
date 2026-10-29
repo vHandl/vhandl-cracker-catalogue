@@ -20,7 +20,8 @@ app.use(express.json({ limit: '100kb' }));
 app.get('/api/catalogue', (_req, res) => {
   const shop = db
     .prepare(
-      'SELECT name, phone, whatsapp, address, logo_url AS logoUrl, maps_url AS mapsUrl FROM shop WHERE id = 1'
+      `SELECT name, phone, whatsapp, location_name AS locationName, address, logo_url AS logoUrl, maps_url AS mapsUrl,
+              location_name2 AS locationName2, address2, maps_url2 AS mapsUrl2 FROM shop WHERE id = 1`
     )
     .get();
   const categories = db.prepare('SELECT id, name FROM categories ORDER BY sort_order, name').all();

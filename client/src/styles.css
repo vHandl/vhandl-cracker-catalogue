@@ -402,6 +402,12 @@ p.small {
   background-clip: text;
   color: transparent;
 }
+.hero-locations {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
 .hero-address {
   display: flex;
   align-items: center;
@@ -411,6 +417,22 @@ p.small {
   font-size: 0.95rem;
   line-height: 1.3;
   color: #dcd3f5;
+}
+.hero-locations .hero-address {
+  margin: 0;
+}
+.hero-address > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.hero-location-name {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #ffe08a;
 }
 .hero-address svg {
   flex: none;
@@ -755,62 +777,86 @@ p.small {
 .g-item-block {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 10px 0;
+  padding: 8px 0;
 }
 .g-item-block .g-item-row {
   padding: 0;
-}
-.g-item-actions {
-  display: flex;
-  flex-wrap: wrap; /* only wraps on very narrow screens */
-  align-items: center;
-  gap: 6px;
-}
-.g-item-actions .g-amount-inline {
-  margin-left: auto;
-  padding-right: 2px;
-  white-space: nowrap;
-}
-/* Phone layout: smaller picture, video button and stepper so they sit side by side */
-.g-item-row .thumb {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-}
-/* Phone layout: code + name on one line (name wraps); Watch video and unit price on the next line */
-.g-item-title {
-  display: flex;
   align-items: flex-start;
-  gap: 6px;
-  width: 100%;
-  min-width: 0;
+  gap: 10px;
 }
-.g-item-title .card-code {
-  flex: none;
-  margin-top: 2px;
-}
-.g-item-title .g-name {
-  flex: 1 1 0;
-  min-width: 0;
-}
-.g-price-line {
-  display: flex;
-  flex-wrap: wrap;
+.g-item-block .g-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  column-gap: 8px;
+  row-gap: 2px;
   align-items: center;
-  gap: 4px 10px;
 }
-.g-price-line .video-btn {
-  min-height: 24px;
-  gap: 4px;
-  padding: 0 9px 0 7px;
+.g-item-block .g-name {
+  grid-column: 1;
+  grid-row: 1;
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.g-item-meta {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 1.3em;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.g-item-block .card-price {
+  grid-column: 1;
+  grid-row: 3;
+  min-width: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--brand-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.g-item-block .card-price small {
   font-size: 0.72rem;
 }
-.g-price-line .video-btn svg {
-  width: 12px;
-  height: 12px;
+.g-item-block .g-amount-inline {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.g-item-block .g-item-actions {
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 32px;
+  margin-left: 0;
+}
+/* Phone layout: 52px photo so pack art stays readable */
+.g-item-row .thumb-wrap,
+.g-item-row .thumb {
+  width: 52px;
+  height: 52px;
+}
+.g-item-row .thumb {
+  border-radius: 12px;
 }
 .video-btn:hover {
   background: #e3dbff;
@@ -819,6 +865,16 @@ p.small {
   transform: scale(0.96);
 }
 
+.grid-wrap.grid-compact .ag-header {
+  display: none;
+  border: 0;
+  min-height: 0;
+  height: 0;
+}
+.grid-wrap.grid-compact .ag-cell.g-cell-center {
+  padding-left: 2px;
+  padding-right: 2px;
+}
 .grid-wrap {
   margin: 14px 0;
 }
@@ -1382,6 +1438,80 @@ p.small {
   font-size: 0.82rem;
   font-style: normal;
   font-weight: 600;
+}
+.store-block {
+  margin: 20px 0 8px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #fbfaff;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.store-block h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.store-block .muted {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
+}
+.store-block .field:first-of-type {
+  margin-top: 10px;
+}
+.pickup-choices {
+  margin: 16px 0 8px;
+  padding: 0;
+  border: 0;
+}
+.pickup-choices legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.pickup-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 8px 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  cursor: pointer;
+}
+.pickup-choice.selected {
+  box-shadow: inset 0 0 0 2px var(--brand), var(--ring);
+}
+.pickup-choice input {
+  flex: none;
+  margin-top: 3px;
+  accent-color: var(--brand);
+}
+.pickup-choice strong {
+  display: block;
+}
+.pickup-choice em {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-style: normal;
+  font-weight: 500;
+}
+.pickup-summary {
+  margin: -4px 0 12px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.pickup-summary a {
+  color: var(--violet);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .check-row {
   display: flex;
@@ -2056,6 +2186,72 @@ p.small {
   flex: 1 1 160px;
 }
 
+.order-amt .badge {
+  margin-top: 4px;
+}
+.order-detail-status {
+  margin-top: 8px;
+}
+.badge-status-pending {
+  background: #fff4d1;
+  color: #7a4d00;
+}
+.badge-status-processed {
+  background: #dcfce7;
+  color: #11603a;
+}
+.badge-status-cancelled {
+  background: #ffe4e6;
+  color: #9f1239;
+}
+.badge-status-no_response {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.order-status {
+  margin-top: 18px;
+  padding: 14px 0 0;
+  border-top: 1px dashed #f0e6c8;
+}
+.order-status-label {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.order-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.order-status-actions .btn {
+  flex: 1 1 130px;
+}
+.order-status-btn.active {
+  font-weight: 800;
+}
+.order-status-btn.active.status-processed {
+  background: #dcfce7;
+  color: #11603a;
+  box-shadow: inset 0 0 0 2px #86efac;
+}
+.order-status-btn.active.status-cancelled {
+  background: #ffe4e6;
+  color: #9f1239;
+  box-shadow: inset 0 0 0 2px #fda4af;
+}
+.order-status-btn.active.status-no_response {
+  background: #ede9fe;
+  color: #5b21b6;
+  box-shadow: inset 0 0 0 2px #c4b5fd;
+}
+.order-status-clear {
+  margin-top: 6px;
+  font-size: 0.85rem;
+}
+
 .admin-item {
   display: flex;
   flex-wrap: wrap;
@@ -2316,6 +2512,12 @@ p.small {
   place-items: center;
   color: #b3accd;
 }
+.thumb-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  line-height: 0;
+}
 .thumb-btn {
   display: inline-flex;
   flex: none;
@@ -2329,6 +2531,30 @@ p.small {
 .thumb-btn:focus-visible {
   outline: none;
   box-shadow: var(--ring);
+}
+.thumb-play {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(18, 11, 46, 0.78);
+  color: #fff;
+  cursor: pointer;
+  line-height: 0;
+}
+.thumb-play:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.thumb-play:active {
+  transform: scale(0.94);
 }
 
 /* Fixed-size product photo popup */
@@ -2387,9 +2613,20 @@ p.small {
   min-width: 0;
   padding: 8px 0;
 }
-.g-named .g-name {
+.g-named-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
   flex: 1;
   min-width: 0;
+}
+.g-named .g-name {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.g-named .g-item-meta {
+  flex: none;
 }
 .grid-wrap .ag-cell.g-cell-code,
 .grid-wrap .ag-header-cell.g-head-code {
@@ -2502,6 +2739,14 @@ p.small {
 .grid-wrap .card-price small {
   font-size: 0.72rem;
 }
+.grid-wrap .g-item-block .card-price {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--brand-dark);
+}
+.grid-wrap .g-item-block .card-price small {
+  font-size: 0.72rem;
+}
 
 /* PDF button loader */
 .btn-spinner {
@@ -2565,6 +2810,9 @@ p.small {
 }
 .my-orders-pickup {
   margin: 0;
+}
+.my-order .my-orders-pickup {
+  margin: 10px 0;
 }
 .my-orders-pickup a {
   font-weight: 700;
