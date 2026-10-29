@@ -366,6 +366,7 @@ function groupOrder(order: Order): SelectedGroup[] {
       product: {
         id: g.lines.length + catId * 1000,
         code: it.code,
+        brand: '',
         name: it.name,
         categoryId: g.category.id,
         price: it.price,
